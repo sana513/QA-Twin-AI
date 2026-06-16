@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>QA Twin — AI‑Powered QA Analysis</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/gherkin.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/javascript.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script>
+    tailwind.config = {
+      darkMode:'class',
+      theme:{
+        extend:{
+          colors:{
+            brand:{400:'#38bdf8',500:'#0ea5e9',600:'#0284c7'},
+            surface:{DEFAULT:'#0f1117',100:'#161b27',200:'#1e2535',300:'#252d3d'},
+          },
+          fontFamily:{sans:['Inter','system-ui','sans-serif']},
+          animation:{'fade-up':'fadeUp 0.3s ease-out','pulse-slow':'pulse 3s ease-in-out infinite',shimmer:'shimmer 1.5s infinite'},
+          keyframes:{
+            fadeUp:{from:{transform:'translateY(10px)',opacity:'0'},to:{transform:'translateY(0)',opacity:'1'}},
+            shimmer:{'0%':{backgroundPosition:'-200% 0'},'100%':{backgroundPosition:'200% 0'}},
+          }
+        }
+      }
+    }
+  </script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    *{box-sizing:border-box} body{background:#0f1117}
+    ::-webkit-scrollbar{width:4px;height:4px} ::-webkit-scrollbar-track{background:transparent} ::-webkit-scrollbar-thumb{background:#2d3748;border-radius:9999px}
+    .glass{background:rgba(22,27,39,0.8);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.06)}
+    .glass-hover:hover{background:rgba(30,37,53,0.9);border-color:rgba(56,189,248,0.2)}
+    .issue-card,.slack-card{transition:all 0.2s cubic-bezier(0.4,0,0.2,1)}
+    .issue-card:hover,.slack-card:hover{transform:translateY(-1px);box-shadow:0 8px 20px rgba(0,0,0,0.2)}
+    .issue-card.selected{border-color:rgba(56,189,248,0.5)!important;background:rgba(14,165,233,0.08)!important}
+    .slack-card.selected{border-color:rgba(74,222,128,0.5)!important;background:rgba(34,197,94,0.08)!important}
+    .shimmer-bg{background:linear-gradient(90deg,#1e2535 25%,#252d3d 50%,#1e2535 75%);background-size:200% 100%;animation:shimmer 1.5s infinite}
+    .priority-badge.Critical,.priority-badge.Highest{background:rgba(239,68,68,0.15);color:#f87171;border:1px solid rgba(239,68,68,0.3)}
+    .priority-badge.High{background:rgba(249,115,22,0.15);color:#fb923c;border:1px solid rgba(249,115,22,0.3)}
+    .priority-badge.Medium{background:rgba(234,179,8,0.15);color:#facc15;border:1px solid rgba(234,179,8,0.3)}
+    .priority-badge.Low,.priority-badge.Lowest{background:rgba(34,197,94,0.15);color:#4ade80;border:1px solid rgba(34,197,94,0.3)}
+    .risk-badge.Critical{background:rgba(239,68,68,0.15);color:#f87171}
+    .risk-badge.High{background:rgba(249,115,22,0.15);color:#fb923c}
+    .risk-badge.Medium{background:rgba(234,179,8,0.15);color:#facc15}
+    .risk-badge.Low{background:rgba(34,197,94,0.15);color:#4ade80}
+    .status-badge{background:rgba(99,102,241,0.15);color:#a5b4fc;border:1px solid rgba(99,102,241,0.3)}
+    .status-badge.done{background:rgba(34,197,94,0.15);color:#4ade80;border-color:rgba(34,197,94,0.3)}
+    .status-badge.progress{background:rgba(56,189,248,0.15);color:#7dd3fc;border-color:rgba(56,189,248,0.3)}
+    .tab-btn.active{background:rgba(14,165,233,0.15);color:#38bdf8;border-bottom:2px solid #38bdf8}
+    .tab-btn{border-bottom:2px solid transparent;transition:all 0.2s}
+    .code-tab-btn{border-bottom:2px solid transparent;transition:all 0.2s}
+    .code-tab-btn.active{color:#38bdf8;border-bottom-color:#38bdf8}
+    @keyframes gradientShift{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
+    .animated-gradient{background:linear-gradient(-45deg,#0ea5e9,#6366f1,#8b5cf6,#0ea5e9);background-size:300% 300%;animation:gradientShift 6s ease infinite}
+    .slack-gradient{background:linear-gradient(-45deg,#4ade80,#22d3ee,#4ade80);background-size:300% 300%;animation:gradientShift 6s ease infinite}
+    .modal-overlay{background:rgba(0,0,0,0.75);backdrop-filter:blur(6px)}
+    .input-field{background:rgba(30,37,53,0.8);border:1px solid rgba(255,255,255,0.08);color:#e2e8f0;border-radius:10px;padding:10px 14px;width:100%;outline:none;font-size:13px;transition:border-color 0.2s}
+    .input-field:focus{border-color:rgba(56,189,248,0.4)} .input-field::placeholder{color:#4a5568}
+    .btn-primary{background:linear-gradient(-45deg,#0ea5e9,#6366f1,#8b5cf6,#0ea5e9);background-size:300% 300%;animation:gradientShift 6s ease infinite;color:white;font-weight:600;border-radius:10px;padding:10px 20px;cursor:pointer;border:none;font-size:13px;transition:transform 0.1s}
+    .btn-primary:active{transform:scale(0.97)}
+    .btn-slack{background:linear-gradient(-45deg,#4ade80,#22d3ee,#4ade80);background-size:300% 300%;animation:gradientShift 6s ease infinite;color:#0f1117;font-weight:600;border-radius:10px;padding:10px 20px;cursor:pointer;border:none;font-size:13px}
+    .btn-secondary{background:rgba(30,37,53,0.8);border:1px solid rgba(255,255,255,0.08);color:#94a3b8;border-radius:10px;padding:10px 20px;cursor:pointer;font-size:13px;transition:all 0.2s}
+    .btn-secondary:hover{border-color:rgba(56,189,248,0.3);color:#e2e8f0}
+    .code-editor-wrap{background:#0d1117;border:1px solid rgba(255,255,255,0.08);border-radius:12px;overflow:hidden}
+    .code-editor-header{background:#161b27;border-bottom:1px solid rgba(255,255,255,0.06);padding:10px 16px;display:flex;align-items:center;justify-content:space-between}
+    .code-editor-body{position:relative;overflow:auto;max-height:420px}
+    .code-editor-body pre{margin:0!important;padding:16px!important;background:transparent!important;font-size:12.5px!important;line-height:1.7!important;font-family:'JetBrains Mono','Fira Code','Cascadia Code',monospace!important}
+    .code-editor-body code{font-family:'JetBrains Mono','Fira Code','Cascadia Code',monospace!important;font-size:12.5px!important}
+    .hljs{background:transparent!important}
+    .code-lang-badge{font-size:10px;font-weight:600;padding:3px 8px;border-radius:6px;letter-spacing:0.05em}
+    .badge-gherkin{background:rgba(74,222,128,0.15);color:#4ade80;border:1px solid rgba(74,222,128,0.3)}
+    .badge-js{background:rgba(250,204,21,0.15);color:#facc15;border:1px solid rgba(250,204,21,0.3)}
+  </style>
+</head>
+<body class="font-sans text-slate-200 min-h-screen flex flex-col">
+
+<!-- CONFIG MODAL (polished) -->
+<div id="configModal" class="fixed inset-0 z-50 flex items-center justify-center modal-overlay">
+  <div class="glass rounded-2xl w-full max-w-lg mx-4 animate-fade-up overflow-hidden">
+    <div class="flex border-b border-white/5">
+      <button onclick="switchConfigTab('jira')" id="cfgTabJira" class="flex-1 py-3 text-xs font-semibold text-white bg-brand-500/10 border-b-2 border-brand-400 cursor-pointer flex items-center justify-center gap-2">📋 Jira</button>
+      <button onclick="switchConfigTab('slack')" id="cfgTabSlack" class="flex-1 py-3 text-xs font-semibold text-slate-500 cursor-pointer flex items-center justify-center gap-2 hover:text-slate-300">💬 Slack</button>
+      <button onclick="switchConfigTab('qase')" id="cfgTabQase" class="flex-1 py-3 text-xs font-semibold text-slate-500 cursor-pointer flex items-center justify-center gap-2 hover:text-slate-300">🧪 Qase</button>
+      <button onclick="switchConfigTab('cicd')" id="cfgTabCicd" class="flex-1 py-3 text-xs font-semibold text-slate-500 cursor-pointer flex items-center justify-center gap-2 hover:text-slate-300">🚀 CI/CD</button>
+    </div>
+
+    <!-- JIRA PANEL -->
+    <div id="cfgPanelJira" class="p-6">
+      <div class="flex items-center gap-3 mb-5">
+        <div class="w-10 h-10 rounded-xl animated-gradient flex items-center justify-center"><svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg></div>
+        <div><h2 class="text-sm font-bold text-white">Jira Configuration</h2><p class="text-xs text-slate-500">Connect your Jira account</p></div>
+      </div>
+      <div class="space-y-3">
+        <div><label class="text-xs font-semibold text-slate-400 block mb-1.5">Jira Base URL</label><input id="cfgUrl" type="text" class="input-field" placeholder="https://yourcompany.atlassian.net"/></div>
+        <div><label class="text-xs font-semibold text-slate-400 block mb-1.5">Jira Email</label><input id="cfgEmail" type="email" class="input-field" placeholder="your-email@example.com"/></div>
+        <div><label class="text-xs font-semibold text-slate-400 block mb-1.5">Jira API Token</label><input id="cfgToken" type="password" class="input-field" placeholder="ATATT3xFfGF0..."/></div>
+      </div>
+      <div id="jiraConfigMsg" class="hidden mt-3 text-xs rounded-lg px-3 py-2.5"></div>
+      <div class="flex gap-3 mt-5"><button onclick="testJiraConnection()" class="btn-secondary flex-1">🔗 Test</button><button onclick="saveJiraConfig()" class="btn-primary flex-1">✅ Save</button></div>
+    </div>
+
+    <!-- SLACK PANEL -->
+    <div id="cfgPanelSlack" class="hidden p-6">
+      <div class="flex items-center gap-3 mb-5">
+        <div class="w-10 h-10 rounded-xl slack-gradient flex items-center justify-center"><svg class="w-5 h-5 text-gray-900" viewBox="0 0 24 24" fill="currentColor"><path d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zM6.313 15.165a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313zM8.834 5.042a2.528 2.528 0 0 1-2.521-2.52A2.528 2.528 0 0 1 8.834 0a2.528 2.528 0 0 1 2.521 2.522v2.52H8.834zM8.834 6.313a2.528 2.528 0 0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521H2.522A2.528 2.528 0 0 1 0 8.834a2.528 2.528 0 0 1 2.522-2.521h6.312zM18.956 8.834a2.528 2.528 0 0 1 2.522-2.521A2.528 2.528 0 0 1 24 8.834a2.528 2.528 0 0 1-2.522 2.521h-2.522V8.834zM17.688 8.834a2.528 2.528 0 0 1-2.523 2.521 2.527 2.527 0 0 1-2.52-2.521V2.522A2.527 2.527 0 0 1 15.165 0a2.528 2.528 0 0 1 2.523 2.522v6.312zM15.165 18.956a2.528 2.528 0 0 1 2.523 2.522A2.528 2.528 0 0 1 15.165 24a2.527 2.527 0 0 1-2.52-2.522v-2.522h2.52zM15.165 17.688a2.527 2.527 0 0 1-2.52-2.523 2.526 2.526 0 0 1 2.52-2.52h6.313A2.527 2.527 0 0 1 24 15.165a2.528 2.528 0 0 1-2.522 2.523h-6.313z"/></svg></div>
+        <div><h2 class="text-sm font-bold text-white">Slack Configuration</h2><p class="text-xs text-slate-500">Connect your Slack workspace</p></div>
+      </div>
+      <div class="glass rounded-xl p-3 mb-4 border border-green-500/20"><p class="text-xs font-semibold text-green-400 mb-2">📖 How to get your Slack Bot Token:</p><ol class="text-xs text-slate-400 space-y-1"><li>1. Go to <a href="https://api.slack.com/apps" target="_blank" class="text-green-400 hover:underline">api.slack.com/apps</a> → Create New App → From scratch</li><li>2. Enter app name → Select your workspace</li><li>3. "OAuth & Permissions" → Add Bot Token Scopes: <span class="text-white font-mono">channels:read, channels:history, users:read</span></li><li>4. "Install to Workspace" → Allow</li><li>5. Copy "Bot User OAuth Token" (starts with xoxb-...)</li></ol></div>
+      <div><label class="text-xs font-semibold text-slate-400 block mb-1.5">Slack Bot Token</label><input id="cfgSlackToken" type="password" class="input-field" placeholder="xoxb-..."/></div>
+      <div id="slackConfigMsg" class="hidden mt-3 text-xs rounded-lg px-3 py-2.5"></div>
+      <div class="flex gap-3 mt-5"><button onclick="testSlackConnection()" class="btn-secondary flex-1">🔗 Test</button><button onclick="saveSlackConfig()" class="btn-slack flex-1">✅ Save</button></div>
+    </div>
+
+    <!-- QASE PANEL -->
+    <div id="cfgPanelQase" class="hidden p-6">
+      <div class="flex items-center gap-3 mb-5"><div class="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center"><span class="text-lg">🧪</span></div><div><h2 class="text-sm font-bold text-white">Qase Configuration</h2><p class="text-xs text-slate-500">Push test cases to Qase</p></div></div>
+      <div class="space-y-3"><div><label class="text-xs font-semibold text-slate-400 block mb-1.5">Qase API Token</label><input id="cfgQaseToken" type="password" class="input-field" placeholder="api_token_xxxx"/></div><div><label class="text-xs font-semibold text-slate-400 block mb-1.5">Project Code</label><input id="cfgQaseProject" type="text" class="input-field" placeholder="PRJ"/></div><div><label class="text-xs font-semibold text-slate-400 block mb-1.5">Qase API Base URL</label><input id="cfgQaseUrl" type="text" class="input-field" placeholder="https://api.qase.io"/></div></div>
+      <div id="qaseConfigMsg" class="hidden mt-3 text-xs rounded-lg px-3 py-2.5"></div>
+      <div class="flex gap-3 mt-5"><button onclick="testQaseConnection()" class="btn-secondary flex-1">🔗 Test</button><button onclick="saveQaseConfig()" class="btn-primary flex-1">✅ Save</button></div>
+    </div>
+
+    <!-- CI/CD PANEL -->
+    <div id="cfgPanelCicd" class="hidden p-6">
+      <div class="flex items-center gap-3 mb-5"><div class="w-10 h-10 rounded-xl bg-cyan-500/20 flex items-center justify-center"><span class="text-lg">🚀</span></div><div><h2 class="text-sm font-bold text-white">CI/CD Webhook</h2><p class="text-xs text-slate-500">Trigger deployment automatically</p></div></div>
+      <div><label class="text-xs font-semibold text-slate-400 block mb-1.5">Deployment Webhook URL</label><input id="cfgWebhookUrl" type="text" class="input-field" placeholder="https://your-ci.com/webhook"/></div>
+      <div><label class="text-xs font-semibold text-slate-400 block mb-1.5">GitHub Personal Access Token (classic with repo scope)</label><input id="cfgGithubToken" type="password" class="input-field" placeholder="ghp_..."/></div>
+      <div class="mt-3"><label class="text-xs font-semibold text-slate-400 block mb-1.5">Custom Payload (JSON)</label><textarea id="cfgWebhookPayload" rows="3" class="input-field" placeholder='{"event":"deploy","branch":"main"}'></textarea></div>
+      <div id="cicdConfigMsg" class="hidden mt-3 text-xs rounded-lg px-3 py-2.5"></div>
+      <div class="flex gap-3 mt-5"><button onclick="saveCicdConfig()" class="btn-primary flex-1">💾 Save</button><button onclick="testWebhook()" class="btn-secondary flex-1">🔔 Test Webhook</button></div>
+    </div>
+    <div class="px-6 pb-4 text-center"><button onclick="closeConfigModal()" class="text-xs text-slate-600 hover:text-slate-400 cursor-pointer">Skip for now →</button></div>
+  </div>
+</div>
+
+<!-- TOP NAV -->
+<header class="glass sticky top-0 z-40 px-6 py-3 flex items-center justify-between border-b border-white/5">
+  <div class="flex items-center gap-3">
+   <img src="/logo.png" alt="QA Twin" class="h-12 w-auto rounded-xl shadow-lg">
+    <!-- <img src="/logo.png" alt="QA Twin" class="w-32 h-10 rounded-xl shadow-lg object-contain"> -->
+  </div>
+  <div class="flex items-center gap-2">
+    <div class="glass rounded-xl p-1 flex gap-1">
+      <button onclick="switchSource('jira')" id="srcJira" class="text-xs font-semibold px-3 py-1.5 rounded-lg bg-brand-500/20 text-white flex items-center gap-1.5 cursor-pointer">📋 Jira</button>
+      <button onclick="switchSource('slack')" id="srcSlack" class="text-xs font-semibold px-3 py-1.5 rounded-lg text-slate-500 flex items-center gap-1.5 cursor-pointer hover:text-slate-300">💬 Slack</button>
+    </div>
+    <div id="jiraFilters" class="flex items-center gap-2">
+      <select id="priorityFilter" onchange="loadJiraIssues()" class="glass text-xs text-slate-300 px-3 py-1.5 rounded-lg border-0 outline-none cursor-pointer bg-transparent">
+        <option value="">All Priorities</option>
+        <option value="Highest">🔴 Highest</option>
+        <option value="High">🟠 High</option>
+        <option value="Medium">🟡 Medium</option>
+        <option value="Low">🟢 Low</option>
+      </select>
+      <select id="statusFilter" onchange="loadJiraIssues()" class="glass text-xs text-slate-300 px-3 py-1.5 rounded-lg border-0 outline-none cursor-pointer bg-transparent">
+        <option value="">All Statuses</option>
+        <option value="To Do">To Do</option>
+        <option value="In Progress">In Progress</option>
+        <option value="Done">Done</option>
+      </select>
+    </div>
+    <button onclick="refreshCurrent()" class="glass glass-hover text-xs text-slate-300 px-3 py-1.5 rounded-lg flex items-center gap-1.5 cursor-pointer">
+      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg> Refresh
+    </button>
+    <button onclick="document.getElementById('configModal').classList.remove('hidden')" class="glass glass-hover text-xs text-slate-300 px-3 py-1.5 rounded-lg flex items-center gap-1.5 cursor-pointer">⚙️ Config</button>
+    <div id="connectionStatus" class="flex items-center gap-1.5 text-xs">
+      <div class="w-2 h-2 rounded-full bg-slate-500 animate-pulse"></div>
+      <span class="text-slate-500">Connecting...</span>
+    </div>
+  </div>
+</header>
+
+<!-- MAIN CONTENT (sidebar + analysis area) -->
+<div class="flex flex-1 overflow-hidden h-[calc(100vh-57px)]">
+  <aside class="w-[420px] flex flex-col border-r border-white/5 bg-surface">
+    <div class="p-4 border-b border-white/5"><div class="relative"><svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg><input id="searchInput" type="text" placeholder="Search issues..." oninput="debounceSearch()" class="w-full bg-surface-200 text-sm text-slate-200 placeholder-slate-500 pl-9 pr-4 py-2.5 rounded-xl border border-white/5 outline-none focus:border-brand-500/40 transition-all"/></div><div class="flex gap-3 mt-3"><div class="flex-1 glass rounded-lg p-2 text-center"><div id="totalCount" class="text-lg font-bold text-brand-400">—</div><div class="text-xs text-slate-500">Total</div></div><div class="flex-1 glass rounded-lg p-2 text-center"><div id="highCount" class="text-lg font-bold text-orange-400">—</div><div class="text-xs text-slate-500" id="stat2Label">High+</div></div><div class="flex-1 glass rounded-lg p-2 text-center"><div id="openCount" class="text-lg font-bold text-purple-400">—</div><div class="text-xs text-slate-500" id="stat3Label">Open</div></div></div></div>
+    <div id="slackChannelBar" class="hidden px-4 py-2 border-b border-white/5"><select id="channelSelect" onchange="loadSlackMessages()" class="w-full glass text-xs text-slate-300 px-3 py-2 rounded-lg border-0 outline-none cursor-pointer bg-transparent"><option value="">Select a channel...</option></select></div>
+    <div id="issueList" class="flex-1 overflow-y-auto p-3 space-y-2"><div class="shimmer-bg rounded-xl h-20"></div><div class="shimmer-bg rounded-xl h-20"></div><div class="shimmer-bg rounded-xl h-20"></div></div>
+  </aside>
+
+  <main class="flex-1 flex flex-col overflow-hidden bg-surface">
+    <div id="emptyState" class="flex-1 flex flex-col items-center justify-center gap-4 p-8"><div class="w-20 h-20 rounded-2xl animated-gradient flex items-center justify-center opacity-80 shadow-2xl"><svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg></div><div class="text-center"><h2 class="text-xl font-bold text-white mb-2">Select an item to analyse</h2><p class="text-slate-500 text-sm max-w-sm">Select any Jira issue or Slack message from the left, then click <span class="text-brand-400 font-medium">Analyse with AI</span> to get instant QA insights.</p></div><div class="grid grid-cols-2 gap-3 mt-2 max-w-md w-full"><div class="glass rounded-xl p-3 text-center"><div class="text-2xl mb-1">🧪</div><div class="text-xs font-medium text-slate-300">Test Cases & Flaky Test</div><div class="text-xs text-slate-500">Auto-generated</div></div><div class="glass rounded-xl p-3 text-center"><div class="text-2xl mb-1">⚠️</div><div class="text-xs font-medium text-slate-300">Risk Analysis</div><div class="text-xs text-slate-500">Severity scoring</div></div><div class="glass rounded-xl p-3 text-center"><div class="text-2xl mb-1">🥒</div><div class="text-xs font-medium text-slate-300">Cucumber Scripts</div><div class="text-xs text-slate-500">Ready .feature files</div></div><div class="glass rounded-xl p-3 text-center"><div class="text-2xl mb-1">🎭</div><div class="text-xs font-medium text-slate-300">Playwright Steps</div><div class="text-xs text-slate-500">Step definitions</div></div></div></div>
+
+    <div id="analysisArea" class="hidden flex-1 overflow-y-auto">
+      <div class="glass sticky top-0 z-10 px-6 py-4 border-b border-white/5">
+        <div class="flex items-start justify-between gap-4">
+          <div class="flex-1 min-w-0"><div class="flex items-center gap-2 mb-1 flex-wrap"><span id="headerBadge" class="text-xs font-bold text-brand-400 bg-brand-500/10 px-2 py-0.5 rounded-md font-mono"></span><span id="headerType" class="text-xs px-2 py-0.5 rounded-md bg-slate-700/50 text-slate-400"></span><span id="headerPriority" class="priority-badge text-xs px-2 py-0.5 rounded-md font-medium"></span><span id="headerStatus" class="status-badge text-xs px-2 py-0.5 rounded-md"></span></div><h2 id="headerTitle" class="text-base font-semibold text-white"></h2><div class="flex items-center gap-3 mt-1 flex-wrap"><span class="text-xs text-slate-500">👤 <span id="headerMeta1"></span></span><span class="text-xs text-slate-500">📅 <span id="headerMeta2"></span></span><a id="headerLink" href="#" target="_blank" class="text-xs text-brand-400 hover:text-brand-300 flex items-center gap-1"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg><span id="headerLinkText"></span></a></div></div>
+          <div class="flex gap-2"><button id="createJiraBugBtn" onclick="createJiraFromSlack()" class="hidden glass text-xs font-semibold px-4 py-2 rounded-xl text-red-400 border border-red-500/30 hover:bg-red-500/10 transition-all items-center gap-1.5">🐞 Create Jira Bug</button><button id="analyseBtn" onclick="analyseSelected()" class="animated-gradient text-white text-sm font-semibold px-5 py-2.5 rounded-xl shadow-lg hover:opacity-90 transition-all flex items-center gap-2 whitespace-nowrap"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>Analyse with AI</button><button id="voiceBtn" onclick="startVoiceInput()" class="glass text-xs font-semibold px-4 py-2 rounded-xl text-green-400 border border-green-500/30 hover:bg-green-500/10 transition-all flex items-center gap-1.5">🎤 Voice Test</button></div>
+        </div>
+      </div>
+      <div class="px-6 py-4 border-b border-white/5"><h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2" id="contentLabel">Description</h3><p id="itemContent" class="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap"></p><div id="itemTags" class="flex flex-wrap gap-1.5 mt-3"></div></div>
+      <div id="analysingState" class="hidden px-6 py-12 text-center"><div class="w-16 h-16 mx-auto mb-4 rounded-full animated-gradient flex items-center justify-center animate-pulse"><svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg></div><h3 class="text-white font-semibold mb-2">AI is analysing...</h3><p class="text-slate-500 text-sm">Generating test cases, Playwright scripts & Cucumber features</p><div class="flex justify-center gap-1.5 mt-4"><div class="w-2 h-2 rounded-full bg-brand-400 animate-bounce" style="animation-delay:0ms"></div><div class="w-2 h-2 rounded-full bg-brand-400 animate-bounce" style="animation-delay:150ms"></div><div class="w-2 h-2 rounded-full bg-brand-400 animate-bounce" style="animation-delay:300ms"></div></div></div>
+      <div id="analysisResults" class="hidden px-6 py-4 space-y-5">
+        <div class="glass rounded-xl p-4 border border-white/5" style="box-shadow:0 0 30px rgba(14,165,233,0.1)"><div class="flex items-start justify-between gap-4"><div class="flex-1"><div class="flex items-center gap-2 mb-2"><span class="text-xs font-semibold text-brand-400 uppercase tracking-wider">AI Summary</span><span id="riskBadge" class="risk-badge text-xs font-bold px-2 py-0.5 rounded-lg"></span></div><p id="summaryText" class="text-sm text-slate-300 leading-relaxed"></p><p id="riskRationale" class="text-xs text-slate-500 mt-1"></p></div><div class="flex flex-col items-center shrink-0"><svg class="w-16 h-16 -rotate-90" viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="none" stroke="#1e2535" stroke-width="8"/><circle id="automationRing" cx="50" cy="50" r="45" fill="none" stroke="#38bdf8" stroke-width="8" stroke-linecap="round" stroke-dasharray="283" stroke-dashoffset="283" style="transition:stroke-dashoffset 1s ease;"/></svg><div class="text-center -mt-12 mb-4"><div id="automationScore" class="text-lg font-bold text-white"></div><div class="text-xs text-slate-500">Auto%</div></div></div></div><div class="flex flex-wrap gap-2 mt-3 pt-3 border-t border-white/5"><div class="glass rounded-lg px-3 py-1.5 text-xs flex items-center gap-1.5"><span class="text-brand-400">⏱</span><span class="text-slate-400">Testing Time:</span><span id="estTime" class="text-white font-medium"></span></div><div class="glass rounded-lg px-3 py-1.5 text-xs flex items-center gap-1.5"><span class="text-purple-400">🔧</span><span class="text-slate-400">Auto Effort:</span><span id="estEffort" class="text-white font-medium"></span></div></div></div>
+        <div class="border-b border-white/5"><div class="flex"><button class="tab-btn active text-xs font-medium px-4 py-2.5 text-brand-400 cursor-pointer" onclick="switchTab('testCases',this)">🧪 Test Cases</button><button class="tab-btn text-xs font-medium px-4 py-2.5 text-slate-400 hover:text-slate-200 cursor-pointer" onclick="switchTab('risks',this)">⚠️ Risks</button><button class="tab-btn text-xs font-medium px-4 py-2.5 text-slate-400 hover:text-slate-200 cursor-pointer" onclick="switchTab('automation',this)">🤖 Automation</button><button class="tab-btn text-xs font-medium px-4 py-2.5 text-slate-400 hover:text-slate-200 cursor-pointer" onclick="switchTab('checklist',this)">✅ Checklist</button><button class="tab-btn text-xs font-medium px-4 py-2.5 text-slate-400 hover:text-slate-200 cursor-pointer" onclick="switchTab('flakiness',this)">🔥 Flaky Tests</button><button class="tab-btn text-xs font-medium px-4 py-2.5 text-slate-400 hover:text-slate-200 cursor-pointer" onclick="switchTab('more',this)">📋 More</button></div></div>
+        
+        <div class="flex gap-3 mt-4">
+          <button onclick="pushAllCodeToGitHub()" class="flex-1 glass glass-hover text-sm text-slate-300 py-2.5 rounded-xl flex items-center justify-center gap-2 border border-white/5 cursor-pointer transition-all hover:bg-white/5">
+            📤 Push All Automation Code to GitHub
+          </button>
+        </div>
+        <div id="tab-testCases" class="space-y-3"></div><div id="tab-risks" class="hidden space-y-3"></div><div id="tab-automation" class="hidden space-y-4"></div><div id="tab-checklist" class="hidden space-y-2"></div><div id="tab-more" class="hidden space-y-4"></div>
+        <div id="tab-flakiness" class="hidden space-y-4">
+          <div class="glass rounded-xl p-4">
+            <div class="flex gap-4 items-end flex-wrap">
+              <div class="flex-1 min-w-[200px]">
+                <label class="text-xs font-semibold text-slate-400 block mb-1">Paste Test Execution Log</label>
+                <textarea id="flakinessLog" rows="6" class="input-field w-full font-mono text-xs" placeholder="Paste your test run log (from Jenkins, GitHub Actions, etc.)..."></textarea>
+                <p class="text-xs text-slate-500 mt-1">Include test names, pass/fail status, stack traces – the AI will detect flaky patterns.</p>
+              </div>
+              <button onclick="detectFlakyTests()" class="btn-primary">🔍 Detect Flaky Tests</button>
+            </div>
+          </div>
+          <div id="flakinessResults" class="space-y-2"></div>
+        </div>
+        <div class="flex gap-3"><button onclick="pushToQase()" id="pushToQaseBtn" class="flex-1 glass glass-hover text-sm text-slate-300 py-2.5 rounded-xl flex items-center justify-center gap-2 border border-white/5 cursor-pointer">🧪 Push Test Cases to Qase</button><button onclick="triggerDeploy()" id="deployBtn" class="flex-1 glass glass-hover text-sm text-slate-300 py-2.5 rounded-xl flex items-center justify-center gap-2 border border-white/5 cursor-pointer">🚀 Trigger Deployment</button></div>
+        <button onclick="copyAnalysis(event)" class="w-full glass glass-hover text-sm text-slate-300 py-3 rounded-xl flex items-center justify-center gap-2 cursor-pointer border border-white/5"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg>Copy Full Report</button>
+      </div>
+      <div id="analysisError" class="hidden px-6 py-8 text-center"><div class="text-4xl mb-3">❌</div><h3 class="text-white font-semibold mb-2">Analysis Failed</h3><p id="errorMsg" class="text-slate-500 text-sm mb-4"></p><button onclick="analyseSelected()" class="glass glass-hover text-sm text-slate-300 px-4 py-2 rounded-lg cursor-pointer">Try Again</button></div>
+    </div>
+  </main>
+</div>
+
+<script>
+const API = 'http://localhost:3000/api';
+let allIssues=[], selectedItem=null, currentAnalysis=null, currentSource='jira';
+let searchTimeout=null, slackChannels=[];
+let qaseConfig = { token: '', project: '', baseUrl: '' };
+let cicdConfig = { webhookUrl: '', payloadTemplate: '' };
+
+window.onload = async () => {
+  await loadConfigs();
+  await loadJiraIssues();
+  await loadQaseConfig();
+  await loadCicdConfig();
+};
+
+async function loadConfigs() {
+  try {
+    const [jr, sr] = await Promise.all([fetch(`${API}/config/jira`), fetch(`${API}/config/slack`)]);
+    const jd = await jr.json(); const sd = await sr.json();
+    if (jd.success && jd.config.hasToken) { document.getElementById('cfgUrl').value=jd.config.baseUrl; document.getElementById('cfgEmail').value=jd.config.email; }
+    if (jd.config?.hasToken) closeConfigModal();
+  } catch {}
+}
+
+async function loadQaseConfig() {
+  try {
+    const res = await fetch(`${API}/config/qase`);
+    const data = await res.json();
+    if (data.success) {
+      qaseConfig = data.config;
+      document.getElementById('cfgQaseToken').value = qaseConfig.token || '';
+      document.getElementById('cfgQaseProject').value = qaseConfig.project || '';
+      document.getElementById('cfgQaseUrl').value = qaseConfig.baseUrl || 'https://api.qase.io';
+    }
+  } catch {}
+}
+
+async function loadCicdConfig() {
+  try {
+    const res = await fetch(`${API}/config/cicd`);
+    const data = await res.json();
+    if (data.success) {
+      cicdConfig = data.config;
+      document.getElementById('cfgWebhookUrl').value = cicdConfig.webhookUrl || '';
+      document.getElementById('cfgWebhookPayload').value = cicdConfig.payloadTemplate || '{"event":"deploy"}';
+      document.getElementById('cfgGithubToken').value = data.githubToken || '';
+    }
+  } catch {}
+}
+
+function switchConfigTab(tab) {
+  document.getElementById('cfgPanelJira').classList.toggle('hidden', tab!=='jira');
+  document.getElementById('cfgPanelSlack').classList.toggle('hidden', tab!=='slack');
+  document.getElementById('cfgPanelQase').classList.toggle('hidden', tab!=='qase');
+  document.getElementById('cfgPanelCicd').classList.toggle('hidden', tab!=='cicd');
+  const tabs = ['jira','slack','qase','cicd'];
+  tabs.forEach(t => {
+    const btn = document.getElementById(`cfgTab${t.charAt(0).toUpperCase()+t.slice(1)}`);
+    if (btn) btn.className = `flex-1 py-3 text-xs font-semibold cursor-pointer flex items-center justify-center gap-2 ${tab===t ? 'text-white bg-brand-500/10 border-b-2 border-brand-400' : 'text-slate-500 hover:text-slate-300'}`;
+  });
+}
+function closeConfigModal() { document.getElementById('configModal').classList.add('hidden'); }
+
+async function saveJiraConfig() {
+  const baseUrl=document.getElementById('cfgUrl').value.trim(), email=document.getElementById('cfgEmail').value.trim(), token=document.getElementById('cfgToken').value.trim();
+  if (!baseUrl||!email||!token) return showMsg('jiraConfigMsg','All fields required','error');
+  showMsg('jiraConfigMsg','Saving...','info');
+  try {
+    const res=await fetch(`${API}/config/jira`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({baseUrl,email,token})});
+    const d=await res.json();
+    if (d.success) { showMsg('jiraConfigMsg','✅ Jira connected!','success'); setTimeout(()=>{closeConfigModal();loadJiraIssues();},1000); }
+    else showMsg('jiraConfigMsg','❌ '+d.error,'error');
+  } catch { showMsg('jiraConfigMsg','❌ Server error','error'); }
+}
+async function testJiraConnection() {
+  const baseUrl=document.getElementById('cfgUrl').value.trim(), email=document.getElementById('cfgEmail').value.trim(), token=document.getElementById('cfgToken').value.trim();
+  if (!baseUrl||!email||!token) return showMsg('jiraConfigMsg','Please fill all three fields first','error');
+  showMsg('jiraConfigMsg','Testing...','info');
+  try {
+    await fetch(`${API}/config/jira`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({baseUrl,email,token})});
+    const res=await fetch(`${API}/config/jira/test`); const d=await res.json();
+    d.success ? showMsg('jiraConfigMsg',`✅ Connected as ${d.user}`,'success') : showMsg('jiraConfigMsg','❌ '+d.error,'error');
+  } catch { showMsg('jiraConfigMsg','❌ Connection failed','error'); }
+}
+async function saveSlackConfig() {
+  const token=document.getElementById('cfgSlackToken').value.trim();
+  if (!token) return showMsg('slackConfigMsg','Slack Bot Token required','error');
+  showMsg('slackConfigMsg','Saving...','info');
+  try {
+    const res=await fetch(`${API}/config/slack`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token})});
+    const d=await res.json();
+    if (d.success) { showMsg('slackConfigMsg','✅ Saved! Testing...','success'); setTimeout(testSlackConnection, 800); }
+    else showMsg('slackConfigMsg','❌ '+d.error,'error');
+  } catch { showMsg('slackConfigMsg','❌ Server error','error'); }
+}
+async function testSlackConnection() {
+  const token=document.getElementById('cfgSlackToken').value.trim();
+  if (token) await fetch(`${API}/config/slack`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token})});
+  showMsg('slackConfigMsg','Testing...','info');
+  try {
+    const res=await fetch(`${API}/config/slack/test`); const d=await res.json();
+    if (d.success) { showMsg('slackConfigMsg',`✅ Connected! Workspace: ${d.team}`,'success'); setTimeout(()=>{closeConfigModal();if(currentSource==='slack')loadSlackChannels();},1200); }
+    else showMsg('slackConfigMsg','❌ '+d.error,'error');
+  } catch { showMsg('slackConfigMsg','❌ Connection failed','error'); }
+}
+async function saveQaseConfig() {
+  const token = document.getElementById('cfgQaseToken').value.trim();
+  const project = document.getElementById('cfgQaseProject').value.trim();
+  const baseUrl = document.getElementById('cfgQaseUrl').value.trim() || 'https://api.qase.io';
+  if (!token || !project) return showMsg('qaseConfigMsg','Token and Project Code required','error');
+  showMsg('qaseConfigMsg','Saving...','info');
+  try {
+    const res = await fetch(`${API}/config/qase`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({token,project,baseUrl})});
+    const d = await res.json();
+    if (d.success) { showMsg('qaseConfigMsg','✅ Qase configured!','success'); loadQaseConfig(); }
+    else showMsg('qaseConfigMsg','❌ '+d.error,'error');
+  } catch { showMsg('qaseConfigMsg','❌ Server error','error'); }
+}
+async function testQaseConnection() {
+  const token = document.getElementById('cfgQaseToken').value.trim();
+  const project = document.getElementById('cfgQaseProject').value.trim();
+  const baseUrl = document.getElementById('cfgQaseUrl').value.trim() || 'https://api.qase.io';
+  if (!token || !project) return showMsg('qaseConfigMsg','Token and Project required','error');
+  showMsg('qaseConfigMsg','Testing...','info');
+  try {
+    const res = await fetch(`${API}/config/qase/test`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token, project, baseUrl }) });
+    const d = await res.json();
+    d.success ? showMsg('qaseConfigMsg','✅ Connection successful','success') : showMsg('qaseConfigMsg','❌ ' + (d.error || 'Unknown error'), 'error');
+  } catch (err) { showMsg('qaseConfigMsg','❌ Test failed: ' + err.message, 'error'); }
+}
+
+async function saveCicdConfig() {
+  const webhookUrl = document.getElementById('cfgWebhookUrl').value.trim();
+  const payloadTemplate = document.getElementById('cfgWebhookPayload').value.trim();
+  const githubToken = document.getElementById('cfgGithubToken').value.trim();
+  showMsg('cicdConfigMsg','Saving...','info');
+  try {
+    const res = await fetch(`${API}/config/cicd`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ webhookUrl, payloadTemplate, githubToken }) });
+    const d = await res.json();
+    if (d.success) { showMsg('cicdConfigMsg','✅ CI/CD & GitHub token saved','success'); loadCicdConfig(); }
+    else showMsg('cicdConfigMsg','❌ '+d.error,'error');
+  } catch { showMsg('cicdConfigMsg','❌ Server error','error'); }
+}
+async function testWebhook() {
+  const webhookUrl = document.getElementById('cfgWebhookUrl').value.trim();
+  const payloadTemplate = document.getElementById('cfgWebhookPayload').value.trim();
+  if (!webhookUrl) return showMsg('cicdConfigMsg','Webhook URL required','error');
+  showMsg('cicdConfigMsg','Sending test...','info');
+  try {
+    let payload = {};
+    try { payload = JSON.parse(payloadTemplate); } catch(e) { payload = { event: 'test' }; }
+    const res = await fetch(`${API}/cicd/trigger`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({webhookUrl,payload}) });
+    const d = await res.json();
+    d.success ? showMsg('cicdConfigMsg','✅ Test webhook sent successfully','success') : showMsg('cicdConfigMsg','❌ '+d.error,'error');
+  } catch { showMsg('cicdConfigMsg','❌ Request failed','error'); }
+}
+
+function showMsg(id,msg,type) {
+  const el=document.getElementById(id); el.classList.remove('hidden');
+  el.className=`mt-3 text-xs rounded-lg px-3 py-2.5 ${type==='success'?'bg-green-500/10 text-green-400 border border-green-500/20':type==='error'?'bg-red-500/10 text-red-400 border border-red-500/20':'bg-brand-500/10 text-brand-400 border border-brand-500/20'}`;
+  el.textContent=msg;
+}
+
+function switchSource(src) {
+  currentSource=src;
+  document.getElementById('srcJira').className=`text-xs font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1.5 cursor-pointer ${src==='jira'?'bg-brand-500/20 text-white':'text-slate-500 hover:text-slate-300'}`;
+  document.getElementById('srcSlack').className=`text-xs font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1.5 cursor-pointer ${src==='slack'?'bg-green-500/20 text-white':'text-slate-500 hover:text-slate-300'}`;
+  document.getElementById('jiraFilters').classList.toggle('hidden', src!=='jira');
+  document.getElementById('slackChannelBar').classList.toggle('hidden', src!=='slack');
+  document.getElementById('searchInput').placeholder = src==='slack' ? 'Search messages...' : 'Search issues...';
+  document.getElementById('stat2Label').textContent = src==='slack' ? 'Threads' : 'High+';
+  document.getElementById('stat3Label').textContent = src==='slack' ? 'Reactions' : 'Open';
+  selectedItem=null;
+  document.getElementById('emptyState').classList.remove('hidden');
+  document.getElementById('analysisArea').classList.add('hidden');
+  document.getElementById('createJiraBugBtn').classList.add('hidden');
+  if (src==='slack') loadSlackChannels(); else loadJiraIssues();
+}
+function refreshCurrent() { currentSource==='slack' ? loadSlackMessages() : loadJiraIssues(); }
+function debounceSearch() { clearTimeout(searchTimeout); searchTimeout=setTimeout(()=>currentSource==='slack'?loadSlackMessages():loadJiraIssues(),400); }
+
+async function loadJiraIssues() {
+  showSkeletons();
+  try {
+    const search=document.getElementById('searchInput').value, priority=document.getElementById('priorityFilter').value, status=document.getElementById('statusFilter').value;
+    const res=await fetch(`${API}/issues?${new URLSearchParams({search,priority,status})}`); const data=await res.json();
+    if (data.success) {
+      allIssues=data.issues; renderJiraIssues(data.issues);
+      document.getElementById('totalCount').textContent=data.issues.length;
+      document.getElementById('highCount').textContent=data.issues.filter(i=>['High','Highest','Critical'].includes(i.priority)).length;
+      document.getElementById('openCount').textContent=data.issues.filter(i=>!['Done','Closed','Resolved'].includes(i.status)).length;
+      setConnected(true);
+    } else if (data.error==='JIRA_CONFIG_MISSING') { document.getElementById('configModal').classList.remove('hidden'); showSkeletons(false); }
+    else { showListError(data.error); setConnected(false); }
+  } catch { showListError('Is the server running? Try: node server.js'); setConnected(false); }
+}
+function renderJiraIssues(issues) {
+  const c=document.getElementById('issueList');
+  if (!issues.length) { c.innerHTML=`<div class="text-center py-12 text-slate-500"><div class="text-3xl mb-2">🔍</div><p class="text-sm">No issues found</p></div>`; return; }
+  c.innerHTML=issues.map(i=>`
+    <div class="issue-card glass glass-hover rounded-xl p-3.5 cursor-pointer border border-white/5 ${selectedItem?.id===i.id?'selected':''}" onclick="selectJiraIssue('${i.id}',this)">
+      <div class="flex items-start justify-between gap-2 mb-2"><div class="flex items-center gap-1.5"><span class="text-xs font-mono font-bold text-brand-400">${i.key}</span><span class="text-xs text-slate-500">${getTypeIcon(i.type)} ${i.type}</span></div><span class="priority-badge ${i.priority} text-xs px-1.5 py-0.5 rounded font-medium">${i.priority}</span></div>
+      <p class="text-sm text-slate-200 font-medium line-clamp-2 leading-snug mb-2">${escapeHtml(i.summary)}</p>
+      <div class="flex items-center justify-between gap-2"><span class="status-badge ${getStatusClass(i.status)} text-xs px-2 py-0.5 rounded-md">${i.status}</span><div class="flex items-center gap-2 text-xs text-slate-500">${i.assignee!=='Unassigned'?`<span>👤 ${i.assignee.split(' ')[0]}</span>`:''}${i.commentCount?`<span>💬 ${i.commentCount}</span>`:''}<span>${formatDate(i.updated)}</span></div></div>
+      ${i.labels.length?`<div class="flex flex-wrap gap-1 mt-2">${i.labels.slice(0,3).map(l=>`<span class="text-xs bg-indigo-500/10 text-indigo-400 px-1.5 py-0.5 rounded">${escapeHtml(l)}</span>`).join('')}</div>`:''}
+    </div>`).join('');
+}
+function selectJiraIssue(id, el) {
+  selectedItem={...allIssues.find(i=>i.id===id), _source:'jira'};
+  document.querySelectorAll('.issue-card').forEach(e=>e.classList.remove('selected')); el.classList.add('selected');
+  document.getElementById('createJiraBugBtn').classList.add('hidden');
+  showItemHeader({ badge:selectedItem.key, type:`${getTypeIcon(selectedItem.type)} ${selectedItem.type}`, priority:selectedItem.priority, status:selectedItem.status, title:selectedItem.summary, meta1:selectedItem.assignee, meta2:formatDate(selectedItem.created), link:selectedItem.url, linkText:'Open in Jira', content:selectedItem.description||'No description.', contentLabel:'Description', tags:selectedItem.labels.map(l=>`<span class="text-xs bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 px-2 py-0.5 rounded-md">${escapeHtml(l)}</span>`).join('') });
+}
+
+async function loadSlackChannels() {
+  showSkeletons();
+  try {
+    const res=await fetch(`${API}/slack/channels`); const data=await res.json();
+    if (data.success) {
+      slackChannels=data.channels;
+      const sel=document.getElementById('channelSelect');
+      sel.innerHTML='<option value="">Select a channel...</option>'+data.channels.map(c=>`<option value="${c.id}">${c.isPrivate?'🔒':'#'} ${c.name} (${c.memberCount} members)</option>`).join('');
+      document.getElementById('issueList').innerHTML=`<div class="text-center py-12 text-slate-500"><div class="text-3xl mb-2">💬</div><p class="text-sm">Select a channel above to load messages</p></div>`;
+      document.getElementById('totalCount').textContent=data.channels.length;
+      document.getElementById('highCount').textContent='—';
+      document.getElementById('openCount').textContent='—';
+      setConnected(true);
+    } else if (data.error==='SLACK_CONFIG_MISSING') { document.getElementById('configModal').classList.remove('hidden'); switchConfigTab('slack'); showSkeletons(false); }
+    else showListError('Slack error: '+data.error);
+  } catch { showListError('Could not connect to Slack. Check your token.'); }
+}
+async function loadSlackMessages() {
+  const channelId=document.getElementById('channelSelect').value;
+  if (!channelId) return;
+  showSkeletons();
+  try {
+    const search=document.getElementById('searchInput').value;
+    const res=await fetch(`${API}/slack/messages/${channelId}?search=${encodeURIComponent(search)}`); const data=await res.json();
+    if (data.success) {
+      renderSlackMessages(data.messages, channelId);
+      document.getElementById('totalCount').textContent=data.messages.length;
+      document.getElementById('highCount').textContent=data.messages.filter(m=>m.replyCount>0).length;
+      document.getElementById('openCount').textContent=data.messages.reduce((s,m)=>s+m.reactions.reduce((r,rx)=>r+rx.count,0),0);
+    } else showListError(data.error);
+  } catch { showListError('Could not load messages from this channel.'); }
+}
+function renderSlackMessages(messages, channelId) {
+  const ch=slackChannels.find(c=>c.id===channelId);
+  const c=document.getElementById('issueList');
+  if (!messages.length) { c.innerHTML=`<div class="text-center py-12 text-slate-500"><div class="text-3xl mb-2">💬</div><p class="text-sm">No messages found</p></div>`; return; }
+  c.innerHTML=messages.map(m=>`
+    <div class="slack-card glass glass-hover rounded-xl p-3.5 cursor-pointer border border-white/5" onclick='selectSlackMessage(${JSON.stringify(m).replace(/</g,'\\u003c')}, "${ch?.name||channelId}", this)'>
+      <div class="flex items-start justify-between gap-2 mb-2"><div class="flex items-center gap-2"><div class="w-6 h-6 rounded-full bg-green-500/20 flex items-center justify-center text-xs text-green-400 font-bold">${(m.user||'?')[0].toUpperCase()}</div><span class="text-xs font-semibold text-green-400">${escapeHtml(m.user)}</span></div><span class="text-xs text-slate-500">${formatTime(m.time)}</span></div>
+      <p class="text-sm text-slate-200 line-clamp-3 leading-snug mb-2">${escapeHtml(m.text)}</p>
+      <div class="flex items-center gap-2 flex-wrap">${m.replyCount?`<span class="text-xs bg-blue-500/10 text-blue-400 px-2 py-0.5 rounded-md">💬 ${m.replyCount} replies</span>`:''}${m.reactions.slice(0,3).map(r=>`<span class="text-xs bg-slate-700/50 text-slate-400 px-2 py-0.5 rounded-md">:${r.name}: ${r.count}</span>`).join('')}</div>
+    </div>`).join('');
+}
+function selectSlackMessage(msg, channelName, el) {
+  selectedItem={...msg, channel:'#'+channelName, _source:'slack'};
+  document.querySelectorAll('.slack-card').forEach(e=>e.classList.remove('selected')); el.classList.add('selected');
+  document.getElementById('createJiraBugBtn').classList.remove('hidden');
+  showItemHeader({ badge:'#'+channelName, type:'💬 Slack Message', priority:'', status:'', title:msg.text.length>80?msg.text.substring(0,80)+'...':msg.text, meta1:msg.user, meta2:formatTime(msg.time), link:'', linkText:'', content:msg.text, contentLabel:'Message', tags:msg.reactions.map(r=>`<span class="text-xs bg-slate-700/50 text-slate-400 px-2 py-0.5 rounded-md">:${r.name}: ${r.count}</span>`).join('') });
+}
+
+function showItemHeader(d) {
+  document.getElementById('emptyState').classList.add('hidden');
+  document.getElementById('analysisArea').classList.remove('hidden');
+  document.getElementById('analysisResults').classList.add('hidden');
+  document.getElementById('analysingState').classList.add('hidden');
+  document.getElementById('analysisError').classList.add('hidden');
+  document.getElementById('headerBadge').textContent=d.badge;
+  document.getElementById('headerType').textContent=d.type;
+  document.getElementById('headerTitle').textContent=d.title;
+  document.getElementById('headerMeta1').textContent=d.meta1;
+  document.getElementById('headerMeta2').textContent=d.meta2;
+  document.getElementById('contentLabel').textContent=d.contentLabel;
+  document.getElementById('itemContent').textContent=d.content;
+  document.getElementById('itemTags').innerHTML=d.tags;
+  document.getElementById('headerLink').href=d.link||'#';
+  document.getElementById('headerLink').style.display=d.link?'':'none';
+  document.getElementById('headerLinkText').textContent=d.linkText;
+  const pb=document.getElementById('headerPriority'); pb.textContent=d.priority; pb.className=`priority-badge ${d.priority} text-xs px-2 py-0.5 rounded-md font-medium`;
+  const sb=document.getElementById('headerStatus'); sb.textContent=d.status; sb.className=`status-badge ${getStatusClass(d.status)} text-xs px-2 py-0.5 rounded-md`;
+  currentAnalysis=null;
+}
+
+async function analyseSelected() {
+  if (!selectedItem) return;
+  document.getElementById('analysisResults').classList.add('hidden');
+  document.getElementById('analysisError').classList.add('hidden');
+  document.getElementById('analysingState').classList.remove('hidden');
+  const btn=document.getElementById('analyseBtn');
+  btn.disabled=true;
+  btn.innerHTML=`<svg class="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg> Analysing...`;
+  try {
+    let issueData=selectedItem;
+    if (selectedItem._source==='jira') {
+      try { const dr=await fetch(`${API}/issues/${selectedItem.key}`); const dd=await dr.json(); if(dd.success) issueData={...selectedItem,...dd.issue}; } catch {}
+    }
+    const res=await fetch(`${API}/analyse`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({issue:issueData,source:selectedItem._source})});
+    const data=await res.json();
+    if (data.success) { currentAnalysis=data.analysis; renderAnalysis(data.analysis); }
+    else throw new Error(data.error);
+  } catch(e) {
+    document.getElementById('analysingState').classList.add('hidden');
+    document.getElementById('analysisError').classList.remove('hidden');
+    document.getElementById('errorMsg').textContent=e.message;
+    Swal.fire({ icon:'error', title:'Analysis Failed', text:e.message, confirmButtonColor:'#0ea5e9' });
+  }
+  btn.disabled=false;
+  btn.innerHTML=`<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg> Re-Analyse`;
+}
+
+function renderAnalysis(a) {
+  document.getElementById('analysingState').classList.add('hidden');
+  document.getElementById('analysisResults').classList.remove('hidden');
+  document.getElementById('summaryText').textContent=a.summary||'';
+  document.getElementById('riskRationale').textContent=a.riskRationale||'';
+  const rb=document.getElementById('riskBadge'); rb.textContent=`${getRiskEmoji(a.riskLevel)} ${a.riskLevel} Risk`; rb.className=`risk-badge ${a.riskLevel} text-xs font-bold px-2 py-0.5 rounded-lg`;
+  const score=a.automationAnalysis?.automationScore||0;
+  document.getElementById('automationScore').textContent=`${score}%`;
+  setTimeout(()=>{ document.getElementById('automationRing').style.strokeDashoffset=283-(283*score/100); },100);
+  document.getElementById('estTime').textContent=a.estimatedTestingTime||'N/A';
+  document.getElementById('estEffort').textContent=a.automationAnalysis?.estimatedEffort||'N/A';
+
+  document.getElementById('tab-testCases').innerHTML=(a.testCases||[]).map(tc=>`
+    <div class="glass rounded-xl border border-white/5 overflow-hidden">
+      <div class="flex items-center justify-between px-4 py-2.5 border-b border-white/5"><div class="flex items-center gap-2"><span class="text-xs font-mono font-bold text-brand-400">${tc.id}</span><span class="text-sm font-medium text-white">${escapeHtml(tc.title)}</span></div><div class="flex gap-1.5"><span class="text-xs px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-400">${tc.type}</span><span class="priority-badge ${tc.priority} text-xs px-1.5 py-0.5 rounded">${tc.priority}</span></div></div>
+      <div class="p-4 grid grid-cols-2 gap-3 text-xs"><div><p class="text-slate-500 font-semibold uppercase tracking-wider mb-1">Preconditions</p><p class="text-slate-300">${escapeHtml(tc.preconditions||'—')}</p></div><div><p class="text-slate-500 font-semibold uppercase tracking-wider mb-1">Test Data</p><p class="text-slate-300">${escapeHtml(tc.testData||'—')}</p></div><div class="col-span-2"><p class="text-slate-500 font-semibold uppercase tracking-wider mb-1.5">Steps</p><ol class="space-y-1">${(tc.steps||[]).map((s,i)=>`<li class="flex gap-2"><span class="text-brand-400 font-bold shrink-0">${i+1}.</span><span class="text-slate-300">${escapeHtml(s)}</span></li>`).join('')}</ol></div><div class="col-span-2"><p class="text-slate-500 font-semibold uppercase tracking-wider mb-1">Expected Result</p><p class="text-green-400 font-medium">✓ ${escapeHtml(tc.expectedResult)}</p></div></div>
+    </div>`).join('')||'<p class="text-slate-500 text-sm text-center py-4">No test cases generated</p>';
+
+  document.getElementById('tab-risks').innerHTML=(a.riskAreas||[]).map(r=>`
+    <div class="glass rounded-xl p-4 border border-white/5"><div class="flex items-start justify-between gap-3 mb-2"><h4 class="text-sm font-semibold text-white">${escapeHtml(r.area)}</h4><span class="risk-badge ${r.severity} text-xs font-bold px-2 py-0.5 rounded-lg">${r.severity}</span></div><p class="text-xs text-slate-400 mb-3">${escapeHtml(r.description)}</p><div class="flex items-start gap-2 bg-green-500/5 border border-green-500/20 rounded-lg px-3 py-2"><span class="text-green-400 text-xs shrink-0">🛡</span><p class="text-xs text-green-300">${escapeHtml(r.mitigation)}</p></div></div>`).join('');
+
+  const au=a.automationAnalysis;
+  const featureCode = au?.cucumberFeature || '# No feature file generated';
+  const stepsCode   = au?.playwrightSteps || '// No step definitions generated';
+  document.getElementById('tab-automation').innerHTML = `
+    <div class="grid grid-cols-3 gap-3"><div class="glass rounded-xl p-3 text-center border border-white/5"><div class="text-2xl mb-1">${au?.automatable?'✅':'❌'}</div><p class="text-xs font-semibold text-white">${au?.automatable?'Automatable':'Manual Only'}</p><p class="text-xs text-slate-500">Recommendation</p></div><div class="glass rounded-xl p-3 text-center border border-white/5"><div class="text-2xl font-black text-brand-400 mb-1">${au?.automationScore||0}%</div><p class="text-xs font-semibold text-white">Automation Score</p><p class="text-xs text-slate-500">Suitability</p></div><div class="glass rounded-xl p-3 text-center border border-white/5"><div class="text-sm font-bold text-purple-400 mb-1">${au?.estimatedEffort||'N/A'}</div><p class="text-xs font-semibold text-white">Estimated Effort</p><p class="text-xs text-slate-500">To implement</p></div></div>
+    ${au?.recommendedFrameworks?.length?`<div class="glass rounded-xl p-3 border border-white/5"><p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Frameworks</p><div class="flex flex-wrap gap-2">${au.recommendedFrameworks.map(f=>`<span class="bg-brand-500/10 text-brand-300 border border-brand-500/20 text-xs px-2.5 py-1 rounded-lg font-medium">${escapeHtml(f)}</span>`).join('')}</div></div>`:''}
+    ${au?.automationCandidates?.length?`<div class="glass rounded-xl p-3 border border-white/5"><p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Best Candidates</p><ul class="space-y-1">${au.automationCandidates.map(c=>`<li class="text-xs text-slate-300 flex gap-2"><span class="text-brand-400">▸</span>${escapeHtml(c)}</li>`).join('')}</ul></div>`:''}
+    ${au?.challenges?.length?`<div class="glass rounded-xl p-3 border border-orange-500/20"><p class="text-xs font-semibold text-orange-400 uppercase tracking-wider mb-2">⚠ Challenges</p><ul class="space-y-1">${au.challenges.map(c=>`<li class="text-xs text-slate-300 flex gap-2"><span class="text-orange-400">•</span>${escapeHtml(c)}</li>`).join('')}</ul></div>`:''}
+    <div class="space-y-1"><div class="flex items-center justify-between"><p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Generated Scripts</p><div class="flex gap-1 glass rounded-lg p-0.5"><button onclick="switchCodeTab('feature', this)" id="codeTabFeature" class="code-tab-btn active text-xs px-3 py-1.5 rounded-md text-brand-400 font-medium cursor-pointer">🥒 Feature File</button><button onclick="switchCodeTab('steps', this)" id="codeTabSteps" class="code-tab-btn text-xs px-3 py-1.5 rounded-md text-slate-400 font-medium cursor-pointer hover:text-slate-200">🎭 Step Definitions</button></div></div>
+    <div id="codeFeature" class="code-editor-wrap"><div class="code-editor-header"><div class="flex items-center gap-3"><div class="flex gap-1.5"><div class="w-3 h-3 rounded-full bg-red-500/60"></div><div class="w-3 h-3 rounded-full bg-yellow-500/60"></div><div class="w-3 h-3 rounded-full bg-green-500/60"></div></div><span class="text-xs text-slate-400 font-mono">feature/test.feature</span><span class="code-lang-badge badge-gherkin">Gherkin</span></div><div class="flex gap-2"><button onclick="copyCode('feature')" class="text-xs text-slate-400 hover:text-white glass px-2.5 py-1 rounded-lg cursor-pointer flex items-center gap-1.5"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>Copy</button><button onclick="downloadCode('feature')" class="text-xs text-slate-400 hover:text-white glass px-2.5 py-1 rounded-lg cursor-pointer flex items-center gap-1.5"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>Download .feature</button></div></div><div class="code-editor-body"><pre><code id="featureCode" class="language-gherkin">${escapeHtml(featureCode)}</code></pre></div></div>
+    <div id="codeSteps" class="code-editor-wrap hidden"><div class="code-editor-header"><div class="flex items-center gap-3"><div class="flex gap-1.5"><div class="w-3 h-3 rounded-full bg-red-500/60"></div><div class="w-3 h-3 rounded-full bg-yellow-500/60"></div><div class="w-3 h-3 rounded-full bg-green-500/60"></div></div><span class="text-xs text-slate-400 font-mono">steps/stepDefinitions.js</span><span class="code-lang-badge badge-js">JavaScript</span></div><div class="flex gap-2"><button onclick="copyCode('steps')" class="text-xs text-slate-400 hover:text-white glass px-2.5 py-1 rounded-lg cursor-pointer flex items-center gap-1.5"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>Copy</button><button onclick="downloadCode('steps')" class="text-xs text-slate-400 hover:text-white glass px-2.5 py-1 rounded-lg cursor-pointer flex items-center gap-1.5"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>Download .js</button></div></div><div class="code-editor-body"><pre><code id="stepsCode" class="language-javascript">${escapeHtml(stepsCode)}</code></pre></div></div>
+    <div class="glass rounded-xl p-4 border border-white/5 mt-2"><p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">🚀 How to Run These Scripts</p><div class="space-y-2 text-xs text-slate-400"><p class="text-slate-300 font-medium">1. Install dependencies:</p><div class="code-editor-wrap"><div class="code-editor-body"><pre class="!py-2 !px-3"><code class="language-bash text-green-400">npm install @playwright/test @cucumber/cucumber</code></pre></div></div><p class="text-slate-300 font-medium mt-2">2. Save generated files</p><p class="text-slate-300 font-medium mt-2">3. Run tests:</p><div class="code-editor-wrap"><div class="code-editor-body"><pre class="!py-2 !px-3"><code class="language-bash text-green-400">BASE_URL=https://yourapp.com npx cucumber-js</code></pre></div></div></div></div></div>`;
+  setTimeout(() => { document.querySelectorAll('#tab-automation pre code').forEach(el => hljs.highlightElement(el)); }, 50);
+
+  const cats=[...new Set((a.checklistItems||[]).map(c=>c.category))];
+  document.getElementById('tab-checklist').innerHTML=cats.map(cat=>`
+    <div class="glass rounded-xl p-4 border border-white/5"><p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">${cat}</p><ul class="space-y-2">${(a.checklistItems||[]).filter(c=>c.category===cat).map(c=>`<li class="flex items-center gap-2.5 text-xs text-slate-300"><div class="w-4 h-4 rounded border border-slate-600 bg-slate-800 shrink-0 cursor-pointer hover:border-brand-400 transition-colors" onclick="this.innerHTML=this.innerHTML?'':'✓';this.classList.toggle('bg-brand-500');this.classList.toggle('border-brand-500')"></div>${escapeHtml(c.item)}</li>`).join('')}</ul></div>`).join('');
+
+  document.getElementById('tab-more').innerHTML=`<div class="space-y-4">
+    ${a.edgeCases?.length?`<div class="glass rounded-xl p-4 border border-white/5"><p class="text-xs font-semibold text-yellow-400 uppercase mb-2">🔎 Edge Cases</p><ul class="space-y-1">${a.edgeCases.map(e=>`<li class="text-xs text-slate-300 flex gap-2"><span class="text-yellow-400">◆</span>${escapeHtml(e)}</li>`).join('')}</ul></div>`:''}
+    ${a.testEnvironments?.length?`<div class="glass rounded-xl p-4 border border-white/5"><p class="text-xs font-semibold text-slate-500 uppercase mb-2">🌐 Environments</p><div class="flex flex-wrap gap-2">${a.testEnvironments.map(e=>`<span class="glass text-xs text-slate-300 px-2.5 py-1 rounded-lg">${escapeHtml(e)}</span>`).join('')}</div></div>`:''}
+    ${a.recommendations?.length?`<div class="glass rounded-xl p-4 border border-brand-500/20"><p class="text-xs font-semibold text-brand-400 uppercase mb-2">💡 Recommendations</p><ul class="space-y-1">${a.recommendations.map(r=>`<li class="text-xs text-slate-300 flex gap-2"><span class="text-brand-400">→</span>${escapeHtml(r)}</li>`).join('')}</ul></div>`:''}
+  </div>`;
+  switchTab('testCases', document.querySelector('.tab-btn.active'));
+}
+
+// ==================== FLAKINESS DETECTION ====================
+async function detectFlakyTests() {
+  const logText = document.getElementById('flakinessLog').value.trim();
+  if (!logText) {
+    Swal.fire({ icon:'warning', title:'No Log', text:'Please paste a test execution log.', confirmButtonColor:'#0ea5e9' });
+    return;
+  }
+  const btn = event.currentTarget;
+  const original = btn.innerHTML;
+  btn.innerHTML = '⏳ Analysing...';
+  btn.disabled = true;
+  try {
+    const res = await fetch(`${API}/analyse/flakiness`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ logText }) });
+    const data = await res.json();
+    if (data.success) {
+      renderFlakyTests(data.flakyTests);
+    } else {
+      Swal.fire({ icon:'error', title:'Analysis failed', text:data.error, confirmButtonColor:'#0ea5e9' });
+    }
+  } catch (err) {
+    Swal.fire({ icon:'error', title:'Error', text:err.message, confirmButtonColor:'#0ea5e9' });
+  } finally {
+    btn.innerHTML = original;
+    btn.disabled = false;
+  }
+}
+
+function renderFlakyTests(tests) {
+  const container = document.getElementById('flakinessResults');
+  if (!tests || tests.length === 0) {
+    container.innerHTML = '<div class="glass rounded-xl p-4 text-center"><p class="text-green-400">✅ No flaky tests detected!</p></div>';
+    return;
+  }
+  container.innerHTML = tests.map(t => `
+    <div class="glass rounded-xl p-4 border-l-4 border-orange-500">
+      <div class="flex items-start justify-between"><h4 class="font-mono text-sm text-orange-400">${escapeHtml(t.testName)}</h4><span class="text-xs bg-red-500/20 text-red-400 px-2 py-0.5 rounded">flaky</span></div>
+      <p class="text-xs text-slate-400 mt-2"><span class="font-semibold">🔍 Reason:</span> ${escapeHtml(t.reason)}</p><p class="text-xs text-green-400 mt-1"><span class="font-semibold">🛠 Suggested Fix:</span> ${escapeHtml(t.suggestedFix)}</p>
+    </div>
+  `).join('');
+}
+
+// ==================== PUSH TO QASE ====================
+async function pushToQase() {
+  let testCasesToPush = [];
+  if (currentAnalysis && Array.isArray(currentAnalysis.testCases) && currentAnalysis.testCases.length > 0) {
+    testCasesToPush = currentAnalysis.testCases;
+  } else {
+    const cards = document.querySelectorAll('#tab-testCases .glass.rounded-xl.border');
+    for (const card of cards) {
+      const idEl = card.querySelector('.text-xs.font-mono.font-bold.text-brand-400');
+      const titleEl = card.querySelector('.text-sm.font-medium.text-white');
+      const typeEl = card.querySelector('.bg-indigo-500\\/10');
+      const priorityEl = card.querySelector('.priority-badge');
+      const precondEl = card.querySelector('.grid > div:first-child .text-slate-300');
+      const testDataEl = card.querySelector('.grid > div:nth-child(2) .text-slate-300');
+      const stepsLis = card.querySelectorAll('.col-span-2 ol li');
+      const expectedEl = card.querySelector('.text-green-400');
+      const steps = Array.from(stepsLis).map(li => li.innerText.replace(/^\d+\./, '').trim());
+      testCasesToPush.push({
+        id: idEl ? idEl.innerText : `TC${String(testCasesToPush.length+1).padStart(3,'0')}`,
+        title: titleEl ? titleEl.innerText : 'Test case',
+        type: typeEl ? typeEl.innerText : 'Functional',
+        priority: priorityEl ? priorityEl.innerText : 'Medium',
+        preconditions: precondEl ? precondEl.innerText : 'Not specified',
+        testData: testDataEl ? testDataEl.innerText : 'Not specified',
+        steps: steps.length ? steps : ['Step not available'],
+        expectedResult: expectedEl ? expectedEl.innerText.replace('✓ ', '') : 'Expected result not found'
+      });
+    }
+  }
+  if (testCasesToPush.length === 0) {
+    Swal.fire({ icon:'error', title:'No Test Cases', text:'No test cases found. Run AI analysis first.', confirmButtonColor:'#0ea5e9' });
+    return;
+  }
+  const normalised = testCasesToPush.map(tc => ({
+    title: tc.title || "Untitled",
+    preconditions: tc.preconditions || "None",
+    testData: tc.testData || "None",
+    steps: Array.isArray(tc.steps) ? tc.steps : (tc.steps ? [tc.steps] : []),
+    expectedResult: tc.expectedResult || "Not specified",
+    priority: (tc.priority || "Medium").toLowerCase() === "high" ? "High" : (tc.priority || "Medium").toLowerCase() === "low" ? "Low" : "Medium"
+  }));
+  const btn = document.getElementById('pushToQaseBtn');
+  const original = btn.innerHTML;
+  btn.innerHTML = '⏳ Pushing...';
+  btn.disabled = true;
+  try {
+    const res = await fetch(`${API}/qase/testcases`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ testCases: normalised, title: selectedItem?.summary || selectedItem?.text || 'QA Twin Analysis' }) });
+    const data = await res.json();
+    if (data.success && data.count > 0) {
+      const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 3000, timerProgressBar: true });
+      Toast.fire({ icon: 'success', title: `✅ Pushed ${data.count} test cases to ${data.project}` });
+    } else {
+      throw new Error(data.error || 'Push failed');
+    }
+  } catch (err) {
+    Swal.fire({ icon:'error', title:'Push Failed', text:err.message, confirmButtonColor:'#0ea5e9' });
+  } finally {
+    btn.innerHTML = original;
+    btn.disabled = false;
+  }
+}
+
+async function createJiraFromSlack() {
+  if (!selectedItem || selectedItem._source !== 'slack') return;
+  const btn = document.getElementById('createJiraBugBtn');
+  const originalText = btn.innerHTML;
+  btn.innerHTML = '⏳ Creating...';
+  btn.disabled = true;
+  try {
+    const res = await fetch(`${API}/slack/create-jira`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: selectedItem }) });
+    const data = await res.json();
+    if (data.success) {
+      Swal.fire({ title: 'Jira Issue Created', html: `Key: <strong>${data.key}</strong><br><a href="${data.url}" target="_blank">Open in Jira</a>`, icon: 'success', confirmButtonColor: '#0ea5e9' });
+      btn.innerHTML = '✅ Created!';
+      setTimeout(() => { btn.innerHTML = originalText; btn.disabled = false; }, 3000);
+    } else throw new Error(data.error);
+  } catch (err) {
+    Swal.fire({ icon:'error', title:'Failed to create Jira issue', text:err.message, confirmButtonColor:'#0ea5e9' });
+    btn.innerHTML = originalText;
+    btn.disabled = false;
+  }
+}
+
+async function triggerDeploy() {
+  const btn = document.getElementById('deployBtn');
+  const original = btn.innerHTML;
+  btn.innerHTML = '⏳ Deploying...';
+  btn.disabled = true;
+  try {
+    const res = await fetch(`${API}/cicd/trigger`, { method: 'POST' });
+    const data = await res.json();
+    if (data.success) {
+      Swal.fire({ icon:'success', title:'Deployment triggered', text:data.message || 'Webhook sent', timer:3000, showConfirmButton:false });
+      btn.innerHTML = '✅ Deployed!';
+      setTimeout(() => { btn.innerHTML = original; btn.disabled = false; }, 2000);
+    } else throw new Error(data.error);
+  } catch (err) {
+    Swal.fire({ icon:'error', title:'Deployment failed', text:err.message, confirmButtonColor:'#0ea5e9' });
+    btn.innerHTML = original;
+    btn.disabled = false;
+  }
+}
+
+function switchCodeTab(tab, btn) {
+  document.getElementById('codeFeature').classList.toggle('hidden', tab!=='feature');
+  document.getElementById('codeSteps').classList.toggle('hidden', tab!=='steps');
+  document.querySelectorAll('.code-tab-btn').forEach(b=>{ b.classList.remove('active','text-brand-400'); b.classList.add('text-slate-400'); });
+  btn.classList.add('active','text-brand-400'); btn.classList.remove('text-slate-400');
+}
+function getCodeContent(type) {
+  const a = currentAnalysis?.automationAnalysis;
+  return type==='feature' ? (a?.cucumberFeature||'') : (a?.playwrightSteps||'');
+}
+function copyCode(type) {
+  const code = getCodeContent(type);
+  navigator.clipboard.writeText(code).then(() => {
+    const btn = event.currentTarget;
+    const orig = btn.innerHTML;
+    btn.innerHTML = '✓ Copied!';
+    btn.classList.add('text-green-400');
+    setTimeout(() => { btn.innerHTML=orig; btn.classList.remove('text-green-400'); }, 2000);
+  });
+}
+function downloadCode(type) {
+  const code = getCodeContent(type);
+  const fileName = type==='feature' ? 'test.feature' : 'stepDefinitions.js';
+  const blob = new Blob([code], { type:'text/plain' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href=url; a.download=fileName; a.click();
+  URL.revokeObjectURL(url);
+}
+function escapeHtml(str) { if (!str) return ''; return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function switchTab(name, btn) {
+  ['testCases','risks','automation','checklist','more','flakiness'].forEach(t=>document.getElementById(`tab-${t}`).classList.add('hidden'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active','text-brand-400'));
+  document.getElementById(`tab-${name}`).classList.remove('hidden');
+  btn.classList.add('active','text-brand-400');
+}
+function copyAnalysis(e) {
+  if (!currentAnalysis||!selectedItem) return;
+  const text=`QA Analysis — ${selectedItem.key||selectedItem.channel}\n\nSUMMARY: ${currentAnalysis.summary}\nRISK: ${currentAnalysis.riskLevel}\n\nTEST CASES:\n${(currentAnalysis.testCases||[]).map(tc=>`${tc.id}: ${tc.title}\nSteps: ${tc.steps?.join(' → ')}\nExpected: ${tc.expectedResult}`).join('\n\n')}\n\nRISKS:\n${(currentAnalysis.riskAreas||[]).map(r=>`• ${r.area} [${r.severity}]: ${r.description}`).join('\n')}\n\nCUCUMBER FEATURE:\n${currentAnalysis.automationAnalysis?.cucumberFeature||''}\n\nPLAYWRIGHT STEPS:\n${currentAnalysis.automationAnalysis?.playwrightSteps||''}`;
+  navigator.clipboard.writeText(text).then(()=>{ const btn=e.currentTarget; btn.innerHTML='✓ Copied!'; setTimeout(()=>btn.innerHTML=`<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg> Copy Full Report`,2000); });
+}
+
+// Voice‑activated test cases
+let recognition = null, isListening = false;
+function startVoiceInput() {
+  if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+    Swal.fire({ icon:'error', title:'Not Supported', text:'Your browser does not support voice recognition. Try Chrome, Edge, or Safari.', confirmButtonColor:'#0ea5e9' });
+    return;
+  }
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  recognition = new SpeechRecognition();
+  recognition.continuous = false;
+  recognition.interimResults = false;
+  recognition.lang = 'en-US';
+  recognition.onstart = () => {
+    isListening = true;
+    Swal.fire({ title: '🎤 Listening...', text: 'Speak your test scenario clearly', icon: 'info', showConfirmButton: false, timer: 10000, timerProgressBar: true, didOpen: () => Swal.showLoading() });
+  };
+  recognition.onresult = (event) => {
+    const transcript = event.results[0][0].transcript;
+    Swal.close();
+    processVoiceInput(transcript);
+  };
+  recognition.onerror = (event) => {
+    Swal.close();
+    Swal.fire({ icon:'error', title:'Recognition Error', text:event.error, confirmButtonColor:'#0ea5e9' });
+  };
+  recognition.onend = () => { isListening = false; };
+  recognition.start();
+}
+async function processVoiceInput(transcript) {
+  document.getElementById('analysingState').classList.remove('hidden');
+  document.getElementById('analysisResults').classList.add('hidden');
+  document.getElementById('analysisError').classList.add('hidden');
+  const voiceIssue = { _source:'voice', summary: transcript.length>80?transcript.substring(0,80)+'...':transcript, description:transcript, type:'Voice Input', priority:'Medium', status:'New', assignee:'You', reporter:'Voice', created:new Date().toISOString(), key:'VOICE-'+Date.now() };
+  selectedItem = voiceIssue;
+  showItemHeader({ badge:'🎤 Voice Input', type:'Voice Command', priority:'Medium', status:'New', title:voiceIssue.summary, meta1:'Voice', meta2:new Date().toLocaleString(), link:'', linkText:'', content:transcript, contentLabel:'Spoken Scenario', tags:'<span class="text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded-md">🎤 Voice</span>' });
+  try {
+    const res = await fetch(`${API}/analyse`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ issue:voiceIssue, source:'voice' }) });
+    const data = await res.json();
+    if (data.success) {
+      currentAnalysis = data.analysis;
+      renderAnalysis(data.analysis);
+      Swal.fire({ icon:'success', title:'Test Cases Generated', text:`AI created ${data.analysis.testCases?.length || 0} test cases from your voice`, timer:3000, showConfirmButton:false });
+    } else throw new Error(data.error);
+  } catch (err) {
+    document.getElementById('analysingState').classList.add('hidden');
+    document.getElementById('analysisError').classList.remove('hidden');
+    document.getElementById('errorMsg').textContent = err.message;
+    Swal.fire({ icon:'error', title:'Analysis Failed', text:err.message, confirmButtonColor:'#0ea5e9' });
+  } finally { document.getElementById('analysingState').classList.add('hidden'); }
+}
+
+// Push to GitHub via backend
+async function pushAllCodeToGitHub() {
+  const featureCode = currentAnalysis?.automationAnalysis?.cucumberFeature || '';
+  const stepsCode = currentAnalysis?.automationAnalysis?.playwrightSteps || '';
+  if (!featureCode && !stepsCode) {
+    Swal.fire('Error', 'No automation code found. Run analysis first.', 'error');
+    return;
+  }
+  const { value: form } = await Swal.fire({
+    title: 'Push to GitHub',
+    html: `<input id="owner" class="swal2-input" placeholder="Owner (e.g., sana513)" value="sana513"><input id="repo" class="swal2-input" placeholder="Repo name (e.g., EGO_Automation)" value="EGO_Automation"><input id="branch" class="swal2-input" placeholder="Branch (default main)" value="main">`,
+    focusConfirm: false,
+    preConfirm: () => ({ owner: document.getElementById('owner').value, repo: document.getElementById('repo').value, branch: document.getElementById('branch').value || 'main' })
+  });
+  if (!form) return;
+  try {
+    if (featureCode) await pushFileViaBackend(form.owner, form.repo, 'features/test.feature', featureCode, form.branch);
+    if (stepsCode) await pushFileViaBackend(form.owner, form.repo, 'steps/stepDefinitions.js', stepsCode, form.branch);
+    Swal.fire('Success', 'Automation code pushed to GitHub!', 'success');
+  } catch (err) { Swal.fire('Error', err.message, 'error'); }
+}
+async function pushFileViaBackend(owner, repo, path, content, branch) {
+  const res = await fetch(`${API}/github/push`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ owner, repo, branch, path, content }) });
+  const data = await res.json();
+  if (!data.success) throw new Error(data.error || 'Push failed');
+  return data;
+}
+
+function showSkeletons(show=true) { if(show) document.getElementById('issueList').innerHTML=Array(4).fill('<div class="shimmer-bg rounded-xl h-20"></div>').join(''); }
+function showListError(msg) { document.getElementById('issueList').innerHTML=`<div class="text-center py-10 px-4"><div class="text-3xl mb-3">⚠️</div><p class="text-red-400 text-sm">${msg}</p><button onclick="document.getElementById('configModal').classList.remove('hidden')" class="mt-3 glass text-xs text-slate-300 px-3 py-1.5 rounded-lg cursor-pointer">Configure</button></div>`; }
+function setConnected(ok) { document.getElementById('connectionStatus').innerHTML=ok?`<div class="w-2 h-2 rounded-full bg-green-400"></div><span class="text-green-400">Connected</span>`:`<div class="w-2 h-2 rounded-full bg-red-400"></div><span class="text-red-400">Disconnected</span>`; }
+function getTypeIcon(t) { return {Bug:'🐛',Story:'📖',Task:'✅',Epic:'⚡','Sub-task':'🔹',Feature:'✨',Improvement:'📈'}[t]||'📌'; }
+function getStatusClass(s) { if(!s)return''; const l=s.toLowerCase(); return l.includes('done')||l.includes('closed')?'done':l.includes('progress')||l.includes('review')?'progress':''; }
+function getRiskEmoji(l) { return {Critical:'🔴',High:'🟠',Medium:'🟡',Low:'🟢'}[l]||'⚪'; }
+function formatDate(d) { if(!d)return'—'; return new Date(d).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}); }
+function formatTime(d) { if(!d)return'—'; return new Date(d).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}); }
+</script>
+</body>
+</html>
